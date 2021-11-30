@@ -1,0 +1,157 @@
+<project name="Samifier" default="compile" basedir=".">
+    <description>
+        Translates transcripts assembled from RNA-seq data.
+    </description>
+    <!-- set global properties for this build -->
+    <property name="app.name" value="TranscriptCoder"/>
+    <property name="src.dir" value="${basedir}/src" />
+    <property name="test.dir" value="${basedir}/test" />
+    <property name="lib.dir" location="${basedir}/lib"/>
+    <property name="build.dir" location="${basedir}/build"/>
+    <property name="dist"  location="${basedir}/dist"/>
+    <property name="build.classes.dir" value="${build.dir}/classes" />
+    <property name="build.classes-test.dir" value="${build.dir}/classes-test" />
+    <property name="build.reports.dir" value="${build.dir}/reports" />
+
+
+    <path id="build.classpath">
+      <fileset dir="${lib.dir}">
+        <include name="**/*.jar"/>
+      </fileset>
+    </path>
+
+    <path id="test.classpath">
+      <path refid="build.classpath" />
+      <dirset dir="${build.classes.dir}" />
+      <dirset dir="${build.classes-test.dir}" />
+    </path>
+
+    <target name="init">
+      <!-- Create the time stamp -->
+      <tstamp/>
+      <!-- Create the build directory structure used by compile -->
+      <mkdir dir="${build.dir}"/>
+      <mkdir dir="${build.classes.dir}"/>
+    </target>
+
+    <target name="compile" depends="init"
+          description="compile the source " >
+      <!-- Compile the java code from ${src} into ${build} -->
+      <javac srcdir="${src.dir}" destdir="${build.classes.dir}" includeantruntime="false" debug="true">
+        <classpath refid="build.classpath" />
+      </javac>
+    </target>
+
+    <target name="compile-test" depends="compile">
+      <mkdir dir="${build.classes-test.dir}" />
+      <javac srcdir="${test.dir}" destdir="${build.classes-test.dir}"
+        debug="true" includeantruntime="false">
+        <classpath refid="test.classpath" />
+      </javac>
+    </target>
+
+    <target name="test" depends="compile-test">
+      <mkdir dir="${build.reports.dir}/unittest" />
+      <junit fork="yes" dir="${basedir}" printsummary="withOutAndErr">
+        <jvmarg value="-Duser.dir=${basedir}"/>
+        <classpath>            
+          <path refid="test.classpath" />
+          <pathelement location="${basedir}"/>
+        </classpath>
+        <sysproperty key="basedir" value="${basedir}"/>
+        <formatter type="xml" />
+        <batchtest todir="${build.reports.dir}/unittest" fork="yes">
+          <fileset dir="${test.dir}">
+            <include name="**/*Test.java" />
+          </fileset>
+        </batchtest>
+      </junit>
+
+      <inner-unittest />
+      <fail if="tests.failed" message="Test failures." />
+    </target>
+
+    <target name="dist" depends="compile"
+          description="generate the distribution" >
+      <!-- Create the distribution directory -->
+      <jar destfile="${dist}/TranscriptCoder.jar"
+        basedir="${build.classes.dir}"
+        excludes="**/Test.class" >
+        <zipgroupfileset dir="${lib.dir}" includes="**/*.jar" excludes="junit*"/>
+          <manifest>
+            <attribute name="Main-Class"
+                value="au.org.intersect.samifier.TranscriptCoder"/>
+          </manifest>
+      </jar>
+    </target>
+
+    <target name="clean"
+          description="clean up" >
+      <!-- Delete the ${build} and ${dist} directory trees -->
+      <delete dir="${build.dir}"/>
+      <delete dir="${dist}"/>
+    </target>
+    <macrodef name="inner-unittest">
+      <sequential>
+
+        <mkdir dir="${build.reports.dir}/unittest/xml" />
+        <mkdir dir="${build.reports.dir}/unittest/html" />
+
+        <junit fork="yes" dir="${basedir}" printsummary="withOutAndErr" haltonerror="on">
+          <jvmarg value="-Duser.dir=${basedir}"/>
+          <classpath>
+              
+            <path refid="test.classpath" />
+            <pathelement location="${basedir}"/>
+          </classpath>
+          <sysproperty key="basedir" value="${basedir}"/>
+          <formatter type="plain" />
+          <batchtest todir="${build.reports.dir}/unittest" fork="yes">
+            <fileset dir="${test.dir}">
+              <include name="**/*UnitTest.java" />
+            </fileset>
+          </batchtest>
+        </junit>
+
+       </sequential>
+    </macrodef>
+   <macrodef name="git">
+		<attribute name="command" />
+		<attribute name="dir" default="" />
+		<element name="args" optional="true" />
+		<sequential>
+			<echo message="git @{command} "/>
+			<exec executable="git" dir="@{dir}">
+				<arg value="@{command}" />
+				<args/>
+			</exec>
+		</sequential>
+	</macrodef>
+ 
+	<target name="version" description="Commits all changes to version git">
+		<!--<input message="Commit message" addproperty="commit-message" />
+		
+		<echo message="Commiting all changes with message ${commit-message}" />-->
+                <git command="checkout">
+			<args>
+				<arg value="master"/>
+			</args>
+		</git>
+		<git command="add">
+			<args>
+				<arg value="." />
+			</args>
+		</git>
+		<git command="commit">
+			<args>
+				<!--<arg value="-am ${commit-message}" />-->
+				<arg value="-m Publish latest binary"/>
+			</args>
+		</git>
+		<git command="push" >
+                   <args>
+                      <arg value=""/>
+                   </args>
+                </git>
+	</target>
+</project>
